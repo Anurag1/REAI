@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>REAI | Two AI Bots</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Realtime AI Demo</p>
+          <h1>REAI</h1>
+        </div>
+        <button id="start-btn">Start conversation</button>
+      </header>
+
+      <main class="bot-grid">
+        <section class="bot-card ava" id="ava-card">
+          <div class="avatar-wrapper">
+            <div class="avatar" aria-label="Ava avatar">A</div>
+          </div>
+          <div class="name-row">
+            <h2>Ava</h2>
+            <span class="signal" id="ava-signal">Idle</span>
+          </div>
+          <p class="persona">Warm, curious, upbeat</p>
+          <div class="speech-box" id="ava-speech">Waiting for the next line...</div>
+        </section>
+
+        <section class="bot-card nova" id="nova-card">
+          <div class="avatar-wrapper">
+            <div class="avatar" aria-label="Nova avatar">N</div>
+          </div>
+          <div class="name-row">
+            <h2>Nova</h2>
+            <span class="signal" id="nova-signal">Idle</span>
+          </div>
+          <p class="persona">Calm, witty, precise</p>
+          <div class="speech-box" id="nova-speech">Waiting for the next line...</div>
+        </section>
+      </main>
+
+      <section class="controls-panel">
+        <textarea id="prompt-box" rows="4" placeholder="Type a prompt to begin the AI conversation..."></textarea>
+        <div class="action-row">
+          <button class="secondary" id="prompt-btn">Send prompt</button>
+          <button class="ghost" id="reset-btn">Reset</button>
+        </div>
+      </section>
+
+      <section class="status-panel">
+        <p id="status-text">System ready.</p>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

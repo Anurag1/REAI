@@ -1,0 +1,141 @@
+const API_BASE = 'http://localhost:8000';
+const state = {
+  session: [],
+  speaking: null,
+};
+
+const avaCard = document.getElementById('ava-card');
+const novaCard = document.getElementById('nova-card');
+const avaSpeech = document.getElementById('ava-speech');
+const novaSpeech = document.getElementById('nova-speech');
+const startBtn = document.getElementById('start-btn');
+const promptBtn = document.getElementById('prompt-btn');
+const resetBtn = document.getElementById('reset-btn');
+const promptBox = document.getElementById('prompt-box');
+const statusText = document.getElementById('status-text');
+
+function setStatus(message) {
+  statusText.textContent = message;
+}
+
+function updateBotCard(name, text, isSpeaking) {
+  const targetCard = name === 'Ava' ? avaCard : novaCard;
+  const targetText = name === 'Ava' ? avaSpeech : novaSpeech;
+  const signal = document.getElementById(`${name.toLowerCase()}-signal`);
+
+  targetText.textContent = text;
+  targetCard.classList.toggle('speaking', isSpeaking);
+  signal.textContent = isSpeaking ? 'Speaking' : 'Idle';
+}
+
+function speakText(name, text) {
+  state.speaking = name;
+  updateBotCard(name, text, true);
+  setStatus(`${name} is speaking...`);
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name.toLowerCase().includes(name === 'Ava' ? 'female' : 'male')) || voices[0];
+    if (preferredVoice) utterance.voice = preferredVoice;
+    utterance.rate = 1;
+    utterance.pitch = name === 'Ava' ? 1.35 : 0.92;
+    utterance.onend = () => {
+      state.speaking = null;
+      updateBotCard(name, text, false);
+      setStatus(`${name} finished speaking.`);
+    };
+    window.speechSynthesis.speak(utterance);
+  } else {
+    setTimeout(() => {
+      state.speaking = null;
+      updateBotCard(name, text, false);
+      setStatus(`${name} finished speaking.`);
+    }, 1800);
+  }
+}
+
+async function sendConversation(prompt, speaker = 'User') {
+  const response = await fetch(`${API_BASE}/api/conversation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, speaker }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Conversation request failed');
+  }
+
+  const data = await response.json();
+  return data;
+}
+
+async function runTwoBotCycle(promptText) {
+  setStatus('Generating Ava response...');
+  const first = await sendConversation(promptText, 'User');
+
+  updateBotCard(first.speaker, first.text, false);
+  speakText(first.speaker, first.text);
+
+  setTimeout(async () => {
+    const secondPrompt = first.text;
+    setStatus(`Generating ${first.speaker === 'Ava' ? 'Nova' : 'Ava'} response...`);
+    const second = await sendConversation(secondPrompt, first.speaker);
+    updateBotCard(second.speaker, second.text, false);
+    speakText(second.speaker, second.text);
+  }, 2000);
+}
+
+startBtn.addEventListener('click', async () => {
+  const defaultPrompt = 'Let’s talk about the future of AI, creativity, and what makes human ideas unique.';
+  await runTwoBotCycle(defaultPrompt);
+});
+
+promptBtn.addEventListener('click', async () => {
+  const value = promptBox.value.trim();
+  if (!value) {
+    setStatus('Please type a prompt first.');
+    return;
+  }
+  promptBox.value = '';
+  await runTwoBotCycle(value);
+});
+
+resetBtn.addEventListener('click', () => {
+  avaSpeech.textContent = 'Waiting for the next line...';
+  novaSpeech.textContent = 'Waiting for the next line...';
+  updateBotCard('Ava', 'Waiting for the next line...', false);
+  updateBotCard('Nova', 'Waiting for the next line...', false);
+  setStatus('System ready.');
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+});
+
+(async function initWebRTC() {
+  try {
+    const response = await fetch(`${API_BASE}/health`);
+    const data = await response.json();
+    if (data.status === 'ok') {
+      setStatus('Connection ready. WebRTC signaling layer available.');
+    }
+  } catch (error) {
+    setStatus('Backend not reachable yet. Start the server with uvicorn first.');
+  }
+
+  if ('RTCPeerConnection' in window) {
+    const pc = new RTCPeerConnection();
+    const channel = pc.createDataChannel('reai-channel');
+    channel.onopen = () => {
+      setStatus('WebRTC data channel connected.');
+    };
+    channel.onmessage = event => {
+      const payload = JSON.parse(event.data);
+      if (payload.type === 'status') {
+        setStatus(payload.message);
+      }
+    };
+    pc.createOffer().then(offer => pc.setLocalDescription(offer));
+  }
+})();
